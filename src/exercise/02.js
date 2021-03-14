@@ -3,17 +3,45 @@
 
 import * as React from 'react'
 
-function Greeting({initialName = ''}) {
+function Greeting({ initialName = '' }) {
   // 🐨 initialize the state to the value from localStorage
-  // 💰 window.localStorage.getItem('name') || initialName
-  const [name, setName] = React.useState(initialName)
 
-  // 🐨 Here's where you'll use `React.useEffect`.
-  // The callback should set the `name` in localStorage.
-  // 💰 window.localStorage.setItem('name', name)
+  console.log('renders child')
+  const useLocalStorageState = (
+    defaultState = {},
+    key,
+    { serialize = JSON.stringify, deserialize = JSON.parse } = {}
+  ) => {
+    // lazy state init
+    const [state, setState] = React.useState(() => {
+      console.log('first render')
+      return (
+        deserialize(localStorage.getItem(key)) ||
+        (typeof defaultState === 'function' ? defaultState() : defaultState)
+      )
+    })
+
+    const prevRef = React.useRef(key)
+
+    React.useEffect(() => {
+      console.log('useEffect child')
+      const prevKey = prevRef.current
+      prevKey !== key && localStorage.removeItem(prevKey)
+
+      prevRef.current = key
+      localStorage.setItem(key, serialize(state))
+    }, [key, state, serialize])
+
+    return [state, setState]
+  }
+
+  const [{ name }, setName] = useLocalStorageState(
+    { name: 1, learns: 'react' },
+    'name'
+  )
 
   function handleChange(event) {
-    setName(event.target.value)
+    setName({ name: event.target.value })
   }
   return (
     <div>
@@ -27,7 +55,16 @@ function Greeting({initialName = ''}) {
 }
 
 function App() {
-  return <Greeting />
+  console.log('render parent')
+  const [count, setCount] = React.useState(0)
+  return (
+    <>
+      <button onClick={() => setCount(previousCount => previousCount + 1)}>
+        {count}
+      </button>
+      <Greeting />
+    </>
+  )
 }
 
 export default App
